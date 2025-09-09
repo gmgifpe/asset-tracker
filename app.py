@@ -546,6 +546,7 @@ def update_prices():
     return jsonify({'message': f'Updated prices for {updated_count} assets'})
 
 def get_current_price(symbol, asset_type):
+    print(f"Getting price for {symbol} (type: {asset_type})")
     try:
         if asset_type == 'stock':
             if YFINANCE_AVAILABLE:
@@ -555,17 +556,25 @@ def get_current_price(symbol, asset_type):
                     search_symbol = f"{symbol}.TW"
                 
                 # Use yfinance for more reliable stock data
+                print(f"Trying yfinance with symbol: {search_symbol}")
                 ticker = yf.Ticker(search_symbol)
                 data = ticker.history(period='5d')
                 if not data.empty:
-                    return float(data['Close'].iloc[-1])
+                    price = float(data['Close'].iloc[-1])
+                    print(f"yfinance price found for {search_symbol}: ${price}")
+                    return price
                 
                 # If Taiwan symbol didn't work, try original symbol
                 if search_symbol != symbol:
+                    print(f"Taiwan symbol failed, trying original: {symbol}")
                     ticker = yf.Ticker(symbol)
                     data = ticker.history(period='5d')
                     if not data.empty:
-                        return float(data['Close'].iloc[-1])
+                        price = float(data['Close'].iloc[-1])
+                        print(f"yfinance price found for {symbol}: ${price}")
+                        return price
+                        
+                print(f"yfinance returned no data for {symbol}")
             else:
                 # Fallback to Alpha Vantage API (free tier)
                 url = f'https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={symbol}&apikey=demo'
@@ -723,7 +732,13 @@ def search_symbol(symbol):
         
         # Fallback to basic price lookup
         print(f"Using fallback price lookup for {symbol_upper}")
-        current_price = get_current_price(symbol_upper, 'stock')
+        try:
+            current_price = get_current_price(symbol_upper, 'stock')
+            if current_price:
+                print(f"Fallback price found for {symbol_upper}: ${current_price}")
+        except Exception as fallback_error:
+            print(f"Fallback price lookup failed for {symbol_upper}: {fallback_error}")
+            current_price = 0
         
         return jsonify({
             'symbol': symbol_upper,
@@ -1292,24 +1307,32 @@ def parse_firstrade_csv(csv_content):
     
     for row in reader:
         try:
-            # Firstrade CSV format (example columns):
-            # Date, Account, Symbol, Description, Quantity, Price, Amount, etc.
-            date_str = row.get('Date', '').strip()
+            # Firstrade CSV format (actual columns):
+            # Symbol,Quantity,Price,Action,Description,TradeDate,SettledDate,Interest,Amount,Commission,Fee,CUSIP,RecordType
+            
+            # Only process Trade records, skip Financial records
+            record_type = row.get('RecordType', '').strip()
+            if record_type != 'Trade':
+                continue
+                
+            date_str = row.get('TradeDate', '').strip()
             symbol = row.get('Symbol', '').strip().upper()
+            action = row.get('Action', '').strip().upper()
             description = row.get('Description', '').strip()
             quantity_str = row.get('Quantity', '0').strip()
             price_str = row.get('Price', '0').strip()
             amount_str = row.get('Amount', '0').strip()
             
+            # Skip rows without symbol or date (like interest, transfers, etc.)
             if not symbol or not date_str:
                 continue
                 
-            # Parse date
+            # Parse date (Firstrade uses YYYY-MM-DD format)
             if DATEUTIL_AVAILABLE:
                 transaction_date = dateparse(date_str)
             else:
                 # Fallback date parsing
-                for fmt in ['%m/%d/%Y', '%Y-%m-%d', '%m-%d-%Y']:
+                for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%m-%d-%Y']:
                     try:
                         transaction_date = datetime.strptime(date_str, fmt)
                         break
@@ -1323,18 +1346,43 @@ def parse_firstrade_csv(csv_content):
             price = float(price_str.replace('$', '').replace(',', '')) if price_str else 0
             amount = float(amount_str.replace('$', '').replace(',', '').replace('(', '-').replace(')', '')) if amount_str else 0
             
-            # Determine transaction type from description
+            # Skip if quantity or price is 0
+            if quantity == 0 or price == 0:
+                continue
+            
+            # Determine transaction type from Action column first, then from description
             transaction_type = 'BUY'
-            if 'sell' in description.lower() or 'sold' in description.lower():
+            if action == 'SELL' or 'sell' in action.lower():
                 transaction_type = 'SELL'
                 quantity = abs(quantity)  # Ensure positive quantity
+            elif action == 'BUY' or 'buy' in action.lower():
+                transaction_type = 'BUY'  
+                quantity = abs(quantity)
+            elif 'sell' in description.lower() or 'sold' in description.lower():
+                transaction_type = 'SELL'
+                quantity = abs(quantity)
             elif 'buy' in description.lower() or 'bought' in description.lower():
                 transaction_type = 'BUY'
                 quantity = abs(quantity)
             
+            # Extract company name from description if available
+            name = symbol  # Default to symbol
+            if description:
+                # Try to extract company name from description
+                parts = description.split()
+                if len(parts) > 0:
+                    # Take first few words as company name, but clean it up
+                    name_parts = []
+                    for part in parts[:3]:  # Take first 3 words max
+                        if part.upper() not in ['UNSOLICITED', 'COMMON', 'STOCK', 'INC', 'CORP', 'LTD']:
+                            name_parts.append(part)
+                    if name_parts:
+                        name = ' '.join(name_parts)
+            
             transactions.append({
                 'date': transaction_date,
                 'symbol': symbol,
+                'name': name,
                 'description': description,
                 'quantity': quantity,
                 'price': price,
@@ -1356,24 +1404,33 @@ def parse_schwab_csv(csv_content):
     
     for row in reader:
         try:
-            # Schwab CSV format (example columns):
+            # Schwab CSV format (actual columns):
             # Date, Action, Symbol, Description, Quantity, Price, Fees & Comm, Amount
             date_str = row.get('Date', '').strip()
-            action = row.get('Action', '').strip().upper()
+            action = row.get('Action', '').strip()
             symbol = row.get('Symbol', '').strip().upper()
             description = row.get('Description', '').strip()
             quantity_str = row.get('Quantity', '0').strip()
             price_str = row.get('Price', '0').strip()
             amount_str = row.get('Amount', '0').strip()
             
+            # Skip rows without symbol, date, or action
             if not symbol or not date_str or not action:
                 continue
             
-            # Parse date
+            # Parse date (handle complex formats like "06/13/2024 as of 06/10/2024")
             if DATEUTIL_AVAILABLE:
-                transaction_date = dateparse(date_str)
+                try:
+                    # If date has " as of " format, take the first date
+                    if " as of " in date_str:
+                        date_str = date_str.split(" as of ")[0].strip()
+                    transaction_date = dateparse(date_str)
+                except:
+                    continue
             else:
                 # Fallback date parsing
+                if " as of " in date_str:
+                    date_str = date_str.split(" as of ")[0].strip()
                 for fmt in ['%m/%d/%Y', '%Y-%m-%d', '%m-%d-%Y']:
                     try:
                         transaction_date = datetime.strptime(date_str, fmt)
@@ -1389,20 +1446,37 @@ def parse_schwab_csv(csv_content):
             amount = float(amount_str.replace('$', '').replace(',', '').replace('(', '-').replace(')', '')) if amount_str else 0
             
             # Map Schwab actions to transaction types
-            transaction_type = 'BUY'
-            if action in ['SELL', 'SELL SHORT', 'SELL TO CLOSE']:
+            action_upper = action.upper()
+            transaction_type = None
+            name = description  # Default to full description
+            
+            if action_upper in ['SELL', 'SELL SHORT', 'SELL TO CLOSE']:
                 transaction_type = 'SELL'
                 quantity = abs(quantity)
-            elif action in ['BUY', 'BUY TO OPEN', 'BUY TO COVER']:
+            elif action_upper in ['BUY', 'BUY TO OPEN', 'BUY TO COVER']:
                 transaction_type = 'BUY'
                 quantity = abs(quantity)
+            elif action_upper in ['REINVEST SHARES', 'REINVEST DIVIDEND']:
+                # Treat reinvest as BUY
+                transaction_type = 'BUY'
+                quantity = abs(quantity)
+                # For reinvest, the amount is typically negative, so we use abs of amount divided by price
+                if price > 0 and amount != 0:
+                    calculated_quantity = abs(amount) / price
+                    if quantity == 0:
+                        quantity = calculated_quantity
             else:
-                # Skip other actions like dividends, fees, etc. for now
+                # Skip other actions like dividends, fees, interest, tax adjustments, etc.
+                continue
+            
+            # Skip if still no valid quantity or price
+            if quantity == 0 or price == 0:
                 continue
             
             transactions.append({
                 'date': transaction_date,
                 'symbol': symbol,
+                'name': name,
                 'description': description,
                 'quantity': quantity,
                 'price': price,
@@ -1422,14 +1496,76 @@ def detect_csv_format(csv_content):
     first_line = csv_content.split('\n')[0].lower()
     
     # Look for characteristic column names
-    if 'amount' in first_line and 'description' in first_line:
-        if 'action' in first_line:
-            return 'schwab'
-        else:
-            return 'firstrade'
+    if 'fees & comm' in first_line or 'fees &amp; comm' in first_line:
+        # Schwab has "Fees & Comm" column
+        return 'schwab'
+    elif 'recordtype' in first_line or 'tradedate' in first_line:
+        # Firstrade has "RecordType" and "TradeDate" columns
+        return 'firstrade'
+    elif 'action' in first_line and 'amount' in first_line and 'description' in first_line:
+        # Generic format that could be either, but more likely Schwab
+        return 'schwab'
     
     # Default to firstrade if unclear
     return 'firstrade'
+
+@app.route('/api/preview-csv', methods=['POST'])
+def preview_csv():
+    """Preview transactions from brokerage CSV files without importing"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file uploaded'}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+    
+    if not file.filename.lower().endswith('.csv'):
+        return jsonify({'error': 'File must be a CSV'}), 400
+    
+    try:
+        # Read CSV content
+        csv_content = file.read().decode('utf-8')
+        
+        # Detect format and parse
+        csv_format = detect_csv_format(csv_content)
+        print(f"Preview - Detected CSV format: {csv_format}")
+        
+        if csv_format == 'schwab':
+            transactions = parse_schwab_csv(csv_content)
+        else:  # Default to firstrade
+            transactions = parse_firstrade_csv(csv_content)
+        
+        print(f"Preview - Parsed {len(transactions)} transactions from CSV")
+        
+        if not transactions:
+            return jsonify({'error': 'No valid transactions found in CSV'}), 400
+        
+        # Prepare preview data (limit to first 10 transactions for display)
+        preview_transactions = []
+        for trans_data in transactions[:10]:
+            preview_transactions.append({
+                'date': trans_data['date'].strftime('%Y-%m-%d'),
+                'symbol': trans_data['symbol'],
+                'type': trans_data['transaction_type'],
+                'quantity': trans_data['quantity'],
+                'price': trans_data['price'],
+                'amount': trans_data['amount'],
+                'description': trans_data['description']
+            })
+        
+        return jsonify({
+            'success': True,
+            'transactions': preview_transactions,
+            'total_count': len(transactions),
+            'broker': csv_format.title()
+        })
+        
+    except Exception as e:
+        print(f"Preview error: {str(e)}")
+        return jsonify({'error': f'Failed to preview CSV: {str(e)}'}), 500
 
 @app.route('/api/import-csv', methods=['POST'])
 def import_csv():
@@ -1455,26 +1591,34 @@ def import_csv():
         
         # Detect format and parse
         csv_format = detect_csv_format(csv_content)
+        print(f"Detected CSV format: {csv_format}")
         
         if csv_format == 'schwab':
             transactions = parse_schwab_csv(csv_content)
         else:  # Default to firstrade
             transactions = parse_firstrade_csv(csv_content)
         
+        print(f"Parsed {len(transactions)} transactions from CSV")
         if not transactions:
+            print("No valid transactions found in CSV")
             return jsonify({'error': 'No valid transactions found in CSV'}), 400
         
-        # Get account for import (use first available account or create default)
-        account = Account.query.filter_by(user_id=user_id).first()
+        # Get account for import - create broker-specific account if needed
+        broker = transactions[0]['broker'] if transactions else csv_format.title()
+        account_name = f"{broker} Account"
+        
+        # Look for existing broker account
+        account = Account.query.filter_by(user_id=user_id, name=account_name).first()
         if not account:
-            # Create default brokerage account
+            # Create new broker-specific account
             account = Account(
-                name=f'{csv_format.title()} Account',
+                name=account_name,
                 account_type='brokerage',
                 currency='USD',
                 user_id=user_id
             )
             db.session.add(account)
+            print(f"Created new account: {account_name}")
             db.session.commit()
         
         imported_count = 0
@@ -1488,7 +1632,7 @@ def import_csv():
                     symbol=trans_data['symbol'],
                     transaction_date=trans_data['date'],
                     quantity=trans_data['quantity'],
-                    price=trans_data['price']
+                    price_per_unit=trans_data['price']
                 ).first()
                 
                 if existing:
@@ -1499,9 +1643,11 @@ def import_csv():
                     user_id=user_id,
                     account_id=account.id,
                     symbol=trans_data['symbol'],
+                    name=trans_data.get('name', trans_data['symbol']),
+                    asset_type='stock',  # Default to stock for now
                     transaction_type=trans_data['transaction_type'],
                     quantity=trans_data['quantity'],
-                    price=trans_data['price'],
+                    price_per_unit=trans_data['price'],
                     total_amount=trans_data['amount'],
                     currency='USD',  # Assume USD for now
                     transaction_date=trans_data['date'],
@@ -1536,7 +1682,7 @@ def import_csv():
                             user_id=user_id,
                             account_id=account.id,
                             symbol=trans_data['symbol'],
-                            name=trans_data['symbol'],  # Will be updated later
+                            name=trans_data.get('name', trans_data['symbol']),
                             asset_type='stock',
                             quantity=trans_data['quantity'],
                             purchase_price=trans_data['price'],
@@ -1563,11 +1709,35 @@ def import_csv():
         
         db.session.commit()
         
+        # Auto-update prices for newly imported assets
+        print("Auto-updating prices for imported assets...")
+        updated_assets = Asset.query.filter_by(user_id=user_id).all()
+        price_update_count = 0
+        for asset in updated_assets:
+            try:
+                print(f"Updating price for {asset.symbol}...")
+                price_info = get_asset_info(asset.symbol)
+                if price_info['current_price'] > 0:
+                    asset.current_price = price_info['current_price']
+                    if price_info.get('name') and price_info['name'] != f"{asset.symbol} Stock":
+                        asset.name = price_info['name']  # Update name if we got a better one
+                    price_update_count += 1
+                    print(f"Updated {asset.symbol}: ${price_info['current_price']}")
+                else:
+                    print(f"No price found for {asset.symbol}")
+            except Exception as e:
+                print(f"Failed to update price for {asset.symbol}: {e}")
+        
+        if price_update_count > 0:
+            db.session.commit()
+            print(f"Updated prices for {price_update_count} assets")
+        
         return jsonify({
             'success': True,
-            'message': f'Successfully imported {imported_count} transactions and updated {updated_count} assets from {csv_format.title()}',
+            'message': f'Successfully imported {imported_count} transactions and updated {updated_count} assets from {csv_format.title()}. Prices updated for {price_update_count} assets.',
             'transactions_imported': imported_count,
             'assets_updated': updated_count,
+            'prices_updated': price_update_count,
             'broker': csv_format.title()
         })
         
@@ -1629,11 +1799,11 @@ if __name__ == '__main__':
             )
             db.session.add(test_user)
             db.session.commit()
-            print("✅ Test user created (testuser/testpass123)")
+            print("Test user created (testuser/testpass123)")
     print("Starting Advanced Asset Tracker...")
     print("Features available:")
-    print(f"- yfinance: {'✓' if YFINANCE_AVAILABLE else '✗'}")
-    print(f"- ccxt: {'✓' if CCXT_AVAILABLE else '✗'}")
-    print(f"- pandas: {'✓' if PANDAS_AVAILABLE else '✗'}")
+    print(f"- yfinance: {'OK' if YFINANCE_AVAILABLE else 'NO'}")
+    print(f"- ccxt: {'OK' if CCXT_AVAILABLE else 'NO'}")
+    print(f"- pandas: {'OK' if PANDAS_AVAILABLE else 'NO'}")
     print("Open your browser and go to: http://localhost:5000")
     app.run(debug=True, host='0.0.0.0', port=5000)

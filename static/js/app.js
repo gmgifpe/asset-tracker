@@ -1575,6 +1575,7 @@ function updatePricesAndLoadAnalytics() {
 let selectedFile = null;
 
 function initializeImport() {
+    console.log('Initializing import functionality...');
     const uploadArea = document.getElementById('csv-upload-area');
     const fileInput = document.getElementById('csv-file-input');
     const selectBtn = document.getElementById('select-csv-btn');
@@ -1623,13 +1624,17 @@ function initializeImport() {
     
     // Import button
     importBtn?.addEventListener('click', () => {
+        console.log('Import button clicked, selectedFile:', selectedFile);
         if (selectedFile) {
             const previewEnabled = document.getElementById('preview-import')?.checked;
+            console.log('Preview enabled:', previewEnabled);
             if (previewEnabled) {
                 previewCSV();
             } else {
                 importCSV();
             }
+        } else {
+            console.log('No file selected');
         }
     });
     
@@ -1653,6 +1658,7 @@ function initializeImport() {
 }
 
 function handleFileSelection(file) {
+    console.log('File selected:', file.name, 'Size:', file.size);
     if (!file.name.toLowerCase().endsWith('.csv')) {
         showAlert('❌ Please select a CSV file', 'error');
         return;
@@ -1664,6 +1670,7 @@ function handleFileSelection(file) {
     }
     
     selectedFile = file;
+    console.log('File accepted, selectedFile set to:', selectedFile);
     
     // Update UI
     document.getElementById('csv-file-name').textContent = file.name;
@@ -1702,53 +1709,60 @@ function formatFileSize(bytes) {
 function previewCSV() {
     if (!selectedFile) return;
     
+    console.log('previewCSV called, sending request to preview-csv endpoint');
     showImportStatus('Processing CSV file...');
     
     const formData = new FormData();
     formData.append('file', selectedFile);
     
-    // For preview, we'll just show a simulated preview since the backend imports directly
-    // In a real implementation, you might want a separate preview endpoint
-    setTimeout(() => {
-        hideImportStatus();
-        showImportPreview();
-        
-        // Simulate preview data
-        const previewData = {
-            transactions: [
-                {
-                    date: '2024-01-15',
-                    symbol: 'AAPL',
-                    type: 'BUY',
-                    quantity: 100,
-                    price: 150.00,
-                    amount: 15000.00,
-                    description: 'Buy 100 shares of AAPL'
-                },
-                {
-                    date: '2024-01-20',
-                    symbol: 'GOOGL',
-                    type: 'BUY',
-                    quantity: 50,
-                    price: 2500.00,
-                    amount: 125000.00,
-                    description: 'Buy 50 shares of GOOGL'
-                }
-            ],
-            broker: 'Firstrade'
-        };
-        
-        populatePreviewTable(previewData);
-    }, 2000);
+    $.ajax({
+        url: '/api/preview-csv',
+        method: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function(response) {
+            console.log('Preview response:', response);
+            hideImportStatus();
+            
+            if (response.success) {
+                showImportPreview();
+                populatePreviewTable({
+                    transactions: response.transactions,
+                    broker: response.broker,
+                    total_count: response.total_count
+                });
+            } else {
+                showAlert('❌ Preview failed: ' + (response.error || 'Unknown error'), 'error');
+            }
+        },
+        error: function(xhr) {
+            console.error('Preview error:', xhr);
+            hideImportStatus();
+            let errorMsg = 'Failed to preview CSV file';
+            try {
+                const response = JSON.parse(xhr.responseText);
+                errorMsg = response.error || errorMsg;
+            } catch (e) {
+                // Use default error message
+            }
+            showAlert('❌ ' + errorMsg, 'error');
+        }
+    });
 }
 
 function importCSV() {
-    if (!selectedFile) return;
+    console.log('importCSV called, selectedFile:', selectedFile);
+    if (!selectedFile) {
+        console.log('No selectedFile, returning');
+        return;
+    }
     
     showImportStatus('Importing transactions...');
     
     const formData = new FormData();
     formData.append('file', selectedFile);
+    console.log('FormData created, sending AJAX request...');
     
     $.ajax({
         url: '/api/import-csv',
@@ -1815,7 +1829,7 @@ function populatePreviewTable(data) {
     const detectedBroker = document.getElementById('detected-broker');
     
     tbody.innerHTML = '';
-    transactionCount.textContent = data.transactions.length;
+    transactionCount.textContent = data.total_count || data.transactions.length;
     detectedBroker.textContent = data.broker;
     
     data.transactions.forEach(transaction => {
