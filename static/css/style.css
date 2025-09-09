@@ -1,0 +1,1282 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background-color: #f5f5f5;
+    color: #333;
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* Header */
+header {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+header h1 {
+    color: #2c3e50;
+    font-size: 2rem;
+}
+
+.user-controls {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+/* Auth Forms */
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 250px;
+}
+
+.auth-form h3 {
+    margin-bottom: 10px;
+    color: #2c3e50;
+}
+
+.auth-form input {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+/* Buttons */
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+}
+
+.btn-primary {
+    background-color: #3498db;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #2980b9;
+}
+
+.btn-secondary {
+    background-color: #95a5a6;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #7f8c8d;
+}
+
+.btn-link {
+    background: none;
+    color: #3498db;
+    padding: 5px 10px;
+}
+
+.btn-link:hover {
+    text-decoration: underline;
+}
+
+.btn-small {
+    padding: 5px 10px;
+    font-size: 12px;
+}
+
+/* Utility Classes */
+.hidden {
+    display: none !important;
+}
+
+.text-center {
+    text-align: center;
+}
+
+/* Modal */
+.modal {
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    min-width: 300px;
+    max-width: 500px;
+    position: relative;
+}
+
+.close {
+    position: absolute;
+    right: 15px;
+    top: 10px;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover {
+    color: #999;
+}
+
+/* Navigation Tabs */
+.tabs {
+    display: flex;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 15px 20px;
+    border: none;
+    background: white;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 500;
+    transition: all 0.2s;
+    border-bottom: 3px solid transparent;
+}
+
+.tab-btn:hover {
+    background-color: #f8f9fa;
+}
+
+.tab-btn.active {
+    background-color: #3498db;
+    color: white;
+    border-bottom-color: #2980b9;
+}
+
+/* Tab Content */
+.tab-content {
+    display: none;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    min-height: 600px;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Dashboard */
+.dashboard-grid {
+    display: grid;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.summary-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.card {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    border-left: 4px solid #3498db;
+}
+
+.card h3 {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.card .value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #2c3e50;
+    margin-bottom: 5px;
+}
+
+.card .change {
+    font-size: 14px;
+    color: #27ae60;
+}
+
+.card .change.negative {
+    color: #e74c3c;
+}
+
+.charts-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+/* Responsive adjustments for charts */
+@media (max-width: 1200px) {
+    .charts-row {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .chart-container:nth-child(3) {
+        grid-column: 1 / -1;
+    }
+}
+
+.chart-container {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.chart-container.large {
+    grid-column: 1 / -1;
+}
+
+.chart-container h3 {
+    margin-bottom: 20px;
+    color: #2c3e50;
+}
+
+.chart-container canvas {
+    max-width: 100%;
+    max-height: 300px;
+}
+
+/* Section Headers */
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #eee;
+}
+
+.section-header h2 {
+    color: #2c3e50;
+}
+
+/* Forms */
+.form-container {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.form-container h3 {
+    margin-bottom: 20px;
+    color: #2c3e50;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    margin-bottom: 5px;
+    font-weight: 500;
+    color: #555;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.form-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+/* Tables */
+.table-container {
+    overflow-x: auto;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    color: #555;
+    position: sticky;
+    top: 0;
+}
+
+tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.gain {
+    color: #27ae60;
+    font-weight: 500;
+}
+
+.loss {
+    color: #e74c3c;
+    font-weight: 500;
+}
+
+/* Cards Grid */
+.cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.account-card {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    border-left: 4px solid #3498db;
+}
+
+.account-card h4 {
+    margin-bottom: 10px;
+    color: #2c3e50;
+}
+
+.account-card .type {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 5px;
+}
+
+.account-card .currency {
+    color: #999;
+    font-size: 12px;
+}
+
+/* User List */
+.user-item {
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.user-item:hover {
+    background-color: #f8f9fa;
+    border-color: #3498db;
+}
+
+.user-item h4 {
+    margin-bottom: 5px;
+    color: #2c3e50;
+}
+
+.user-item .email {
+    color: #666;
+    font-size: 14px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        padding: 10px;
+    }
+    
+    header {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+    }
+    
+    .charts-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .chart-container:nth-child(3) {
+        grid-column: unset;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .summary-cards {
+        grid-template-columns: 1fr;
+    }
+    
+    .table-container {
+        font-size: 12px;
+    }
+    
+    th, td {
+        padding: 8px 4px;
+    }
+}
+
+/* Alerts */
+.alert {
+    padding: 15px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+}
+
+.alert-success {
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+}
+
+.alert-error {
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+}
+
+.alert-info {
+    background-color: #d1ecf1;
+    border: 1px solid #bee5eb;
+    color: #0c5460;
+}
+
+/* Analytics specific styles */
+.analytics-metrics {
+    margin-bottom: 30px;
+}
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.metric-card {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid #e74c3c;
+    text-align: center;
+}
+
+.metric-card h4 {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.metric-value {
+    font-size: 18px;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.metric-value small {
+    font-size: 12px;
+    font-weight: normal;
+}
+
+/* Enhanced table styles for analytics */
+#asset-performance-table {
+    width: 100%;
+    margin-top: 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+#asset-performance-table th {
+    background-color: #3498db;
+    color: white;
+    font-weight: 600;
+    padding: 12px;
+}
+
+#asset-performance-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #eee;
+}
+
+#asset-performance-table tr:hover {
+    background-color: #f8f9fa;
+}
+
+/* Feature status indicators */
+.feature-status {
+    display: flex;
+    gap: 10px;
+    margin: 10px 0;
+    font-family: monospace;
+    font-size: 12px;
+}
+
+.feature-available {
+    color: #27ae60;
+}
+
+.feature-unavailable {
+    color: #e74c3c;
+}
+
+/* Transaction Summary Cards */
+.transaction-summary-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+/* Dark Mode Styles */
+body.dark-mode {
+    background-color: #1a1a1a;
+    color: #e0e0e0;
+}
+
+.dark-mode .container {
+    background-color: #1a1a1a;
+}
+
+.dark-mode header {
+    background: #2d2d2d;
+    border-color: #404040;
+}
+
+.dark-mode header h1 {
+    color: #e0e0e0;
+}
+
+.dark-mode .tabs {
+    background: #2d2d2d;
+}
+
+.dark-mode .tab-btn {
+    background: #2d2d2d;
+    color: #e0e0e0;
+    border-color: #404040;
+}
+
+.dark-mode .tab-btn:hover {
+    background-color: #404040;
+}
+
+.dark-mode .tab-btn.active {
+    background-color: #3498db;
+    color: white;
+}
+
+.dark-mode #dark-mode-toggle {
+    background: #404040;
+    border: 1px solid #555;
+    color: #f39c12;
+    cursor: pointer;
+}
+
+.dark-mode #dark-mode-toggle:hover {
+    background: #555;
+}
+
+.dark-mode .tab-content {
+    background: #2d2d2d;
+    border-color: #404040;
+}
+
+.dark-mode .card {
+    background: #404040;
+    border-left-color: #3498db;
+}
+
+.dark-mode .card h3,
+.dark-mode .card .value,
+.dark-mode .card .change {
+    color: #e0e0e0;
+}
+
+.dark-mode .chart-container {
+    background: #404040;
+}
+
+.dark-mode .chart-container h3 {
+    color: #e0e0e0;
+}
+
+.dark-mode .form-container {
+    background: #404040;
+    border-color: #555;
+}
+
+.dark-mode .form-container h3 {
+    color: #e0e0e0;
+}
+
+.dark-mode .form-group input,
+.dark-mode .form-group select,
+.dark-mode .form-group textarea {
+    background: #555;
+    border-color: #666;
+    color: #e0e0e0;
+}
+
+.dark-mode .form-group input:focus,
+.dark-mode .form-group select:focus,
+.dark-mode .form-group textarea:focus {
+    border-color: #3498db;
+    outline: none;
+}
+
+.dark-mode .form-group label {
+    color: #ccc;
+}
+
+.dark-mode .table-container {
+    background: #2d2d2d;
+    border-color: #404040;
+}
+
+.dark-mode table {
+    background: #2d2d2d;
+}
+
+.dark-mode th {
+    background-color: #404040;
+    color: #e0e0e0;
+    border-color: #555;
+}
+
+.dark-mode td {
+    border-color: #404040;
+    color: #e0e0e0;
+}
+
+.dark-mode tbody tr:hover {
+    background-color: #404040;
+}
+
+.dark-mode .btn-primary {
+    background-color: #3498db;
+    border-color: #2980b9;
+}
+
+.dark-mode .btn-secondary {
+    background-color: #666;
+    border-color: #555;
+}
+
+.dark-mode .btn-link {
+    color: #3498db;
+}
+
+.dark-mode .modal {
+    background-color: rgba(0,0,0,0.8);
+}
+
+.dark-mode .modal-content {
+    background-color: #2d2d2d;
+    border: 1px solid #404040;
+    color: #e0e0e0;
+}
+
+.dark-mode .auth-form input {
+    background: #404040;
+    border-color: #555;
+    color: #e0e0e0;
+}
+
+.dark-mode .auth-form h3 {
+    color: #e0e0e0;
+}
+
+.dark-mode .user-item {
+    background: #404040;
+    border-color: #555;
+    color: #e0e0e0;
+}
+
+.dark-mode .user-item:hover {
+    background-color: #555;
+    border-color: #3498db;
+}
+
+.dark-mode .user-item h4 {
+    color: #e0e0e0;
+}
+
+.dark-mode .user-item .email {
+    color: #ccc;
+}
+
+.dark-mode .account-card {
+    background: #404040;
+    border-left-color: #3498db;
+}
+
+.dark-mode .account-card h4,
+.dark-mode .account-card .type,
+.dark-mode .account-card .currency {
+    color: #e0e0e0;
+}
+
+.dark-mode .metric-card {
+    background: #404040;
+    border-left-color: #e74c3c;
+}
+
+.dark-mode .metric-card h4 {
+    color: #ccc;
+}
+
+.dark-mode .metric-value {
+    color: #e0e0e0;
+}
+
+.dark-mode #asset-performance-table {
+    background: #2d2d2d;
+}
+
+.dark-mode #asset-performance-table th {
+    background-color: #404040;
+    color: #e0e0e0;
+}
+
+.dark-mode #asset-performance-table td {
+    color: #e0e0e0;
+    border-color: #404040;
+}
+
+.dark-mode #asset-performance-table tr:hover {
+    background-color: #404040;
+}
+
+.dark-mode .alert-success {
+    background-color: #155724;
+    border-color: #1e7e34;
+    color: #d4edda;
+}
+
+.dark-mode .alert-error {
+    background-color: #721c24;
+    border-color: #a94442;
+    color: #f8d7da;
+}
+
+.dark-mode .alert-info {
+    background-color: #0c5460;
+    border-color: #17a2b8;
+    color: #d1ecf1;
+}
+
+/* Equity Compensation Styles */
+.equity-fields {
+    background: #f8f9fa;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.equity-fields h4 {
+    margin-bottom: 15px;
+    color: #495057;
+    font-size: 16px;
+}
+
+.equity-fields .form-row {
+    margin-bottom: 15px;
+}
+
+.dark-mode .equity-fields {
+    background: #404040;
+    border-color: #555;
+}
+
+.dark-mode .equity-fields h4 {
+    color: #e0e0e0;
+}
+
+/* Status indicators for equity compensation */
+.status-granted {
+    color: #ffc107;
+    font-weight: 500;
+}
+
+.status-vested {
+    color: #28a745;
+    font-weight: 500;
+}
+
+.status-exercised {
+    color: #17a2b8;
+    font-weight: 500;
+}
+
+.status-expired {
+    color: #dc3545;
+    font-weight: 500;
+}
+
+/* Option intrinsic value indicators */
+.option-in-money {
+    color: #28a745;
+    font-weight: bold;
+}
+
+.option-out-money {
+    color: #dc3545;
+}
+
+.option-at-money {
+    color: #ffc107;
+}
+
+/* Taiwan tax liability indicators */
+.tax-liability {
+    color: #dc3545;
+    font-weight: bold;
+    background-color: rgba(220, 53, 69, 0.1);
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+
+.potential-tax {
+    color: #fd7e14;
+    font-weight: 500;
+    background-color: rgba(253, 126, 20, 0.1);
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+
+/* Tax rate input styling */
+.tax-rate-container {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.tax-rate-preset {
+    flex: 1;
+    min-width: 200px;
+}
+
+.tax-rate-input {
+    flex: 0 0 120px;
+    min-width: 120px;
+}
+
+.tax-rate-help {
+    color: #6c757d;
+    font-weight: normal;
+    font-style: italic;
+}
+
+.form-help {
+    color: #6c757d;
+    font-size: 12px;
+    margin-top: 4px;
+    display: block;
+}
+
+.tax-rate-input.preset-selected {
+    background-color: #e3f2fd;
+    border-color: #2196f3;
+    color: #1976d2;
+    font-weight: 500;
+}
+
+.tax-rate-input.preset-selected:focus {
+    box-shadow: 0 0 0 0.2rem rgba(33, 150, 243, 0.25);
+}
+
+.tax-rate-info {
+    color: #6c757d;
+    font-weight: normal;
+    background-color: rgba(108, 117, 125, 0.1);
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+
+/* Action buttons in table */
+.btn + .btn {
+    margin-left: 5px;
+}
+
+.btn-small {
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+/* Import Tab Styles */
+.import-section {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.supported-brokers {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+.broker-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.broker-item {
+    display: flex;
+    flex-direction: column;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border-left: 4px solid #007bff;
+}
+
+.broker-name {
+    font-weight: 600;
+    font-size: 16px;
+    margin-bottom: 5px;
+}
+
+.broker-desc {
+    color: #6c757d;
+    font-size: 14px;
+}
+
+.import-form {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+.upload-area {
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    padding: 40px;
+    text-align: center;
+    background: #f8f9fa;
+    transition: all 0.3s ease;
+    margin-bottom: 20px;
+    cursor: pointer;
+}
+
+.upload-area:hover {
+    border-color: #007bff;
+    background: #e3f2fd;
+}
+
+.upload-area.drag-over {
+    border-color: #007bff;
+    background: #e3f2fd;
+    border-style: solid;
+}
+
+.upload-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+.upload-icon {
+    font-size: 48px;
+    opacity: 0.5;
+}
+
+.upload-text {
+    font-size: 16px;
+    color: #6c757d;
+    margin: 0;
+}
+
+.file-input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.file-info {
+    background: #e8f5e8;
+    border: 1px solid #c3e6c3;
+    border-radius: 6px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.file-details {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.file-name {
+    font-weight: 600;
+    flex: 1;
+}
+
+.file-size {
+    color: #6c757d;
+    font-size: 14px;
+}
+
+.import-options {
+    margin-bottom: 20px;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.checkbox-label input[type="checkbox"] {
+    margin: 0;
+}
+
+.checkmark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #dee2e6;
+    border-radius: 4px;
+    background: white;
+    transition: all 0.2s ease;
+}
+
+.checkbox-label input[type="checkbox"]:checked + .checkmark {
+    background: #007bff;
+    border-color: #007bff;
+}
+
+.checkbox-label input[type="checkbox"]:checked + .checkmark::after {
+    content: '✓';
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.status-message {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+.status-content {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    align-items: center;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: #007bff;
+    width: 0;
+    transition: width 0.3s ease;
+    animation: progress-animation 1.5s infinite;
+}
+
+@keyframes progress-animation {
+    0% { width: 0; }
+    50% { width: 70%; }
+    100% { width: 100%; }
+}
+
+.import-preview {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+.preview-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.import-results {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+.results-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin: 20px 0;
+}
+
+.result-item {
+    display: flex;
+    flex-direction: column;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    text-align: center;
+}
+
+.result-label {
+    font-size: 14px;
+    color: #6c757d;
+    margin-bottom: 5px;
+}
+
+.result-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #28a745;
+}
+
+.results-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+/* Dark mode support for import styles */
+body.dark-mode .supported-brokers,
+body.dark-mode .import-form,
+body.dark-mode .status-message,
+body.dark-mode .import-preview,
+body.dark-mode .import-results {
+    background: #2d2d2d;
+    border-color: #404040;
+}
+
+body.dark-mode .broker-item,
+body.dark-mode .result-item {
+    background: #404040;
+    color: #e0e0e0;
+}
+
+body.dark-mode .upload-area {
+    background: #404040;
+    border-color: #555;
+    color: #e0e0e0;
+}
+
+body.dark-mode .upload-area:hover,
+body.dark-mode .upload-area.drag-over {
+    background: #4a4a4a;
+    border-color: #007bff;
+}
+
+body.dark-mode .file-info {
+    background: #2d4a2d;
+    border-color: #4a6b4a;
+}
+
+body.dark-mode .checkmark {
+    background: #404040;
+    border-color: #555;
+}
+
+body.dark-mode .progress-bar {
+    background: #404040;
+}
+
+/* Currency note styling */
+.currency-note {
+    color: #6c757d;
+    font-style: italic;
+    font-size: 12px;
+    margin-top: 5px;
+    display: block;
+}
+
+body.dark-mode .currency-note {
+    color: #adb5bd;
+}

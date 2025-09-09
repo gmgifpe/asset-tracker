@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asset Tracker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <h1>Asset Tracker</h1>
+            <div class="user-controls">
+                <div id="user-info" class="hidden">
+                    <span>Welcome, <span id="current-user"></span></span>
+                    <button id="switch-user-btn" class="btn btn-secondary">Switch User</button>
+                    <button id="logout-btn" class="btn btn-secondary">Logout</button>
+                </div>
+                <div id="auth-forms">
+                    <div id="login-form" class="auth-form">
+                        <h3>Login</h3>
+                        <input type="text" id="login-username" placeholder="Username" required>
+                        <input type="password" id="login-password" placeholder="Password" required>
+                        <button id="login-submit" class="btn btn-primary">Login</button>
+                        <button id="show-register" class="btn btn-link">Create Account</button>
+                    </div>
+                    
+                    <div id="register-form" class="auth-form hidden">
+                        <h3>Create Account</h3>
+                        <input type="text" id="register-username" placeholder="Username" required>
+                        <input type="email" id="register-email" placeholder="Email" required>
+                        <input type="password" id="register-password" placeholder="Password" required>
+                        <button id="register-submit" class="btn btn-primary">Create Account</button>
+                        <button id="show-login" class="btn btn-link">Back to Login</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- User Selection Modal -->
+        <div id="user-select-modal" class="modal hidden">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Select User</h2>
+                <div id="user-list"></div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <main id="main-content" class="hidden">
+            <!-- Navigation Tabs -->
+            <nav class="tabs">
+                <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+                <button class="tab-btn" data-tab="assets">Assets</button>
+                <button class="tab-btn" data-tab="transactions">Transactions</button>
+                <button class="tab-btn" data-tab="accounts">Accounts</button>
+                <button class="tab-btn" data-tab="import">Import</button>
+                <button class="tab-btn" data-tab="analytics">Analytics</button>
+                <button id="dark-mode-toggle" class="tab-btn" title="Toggle Dark Mode">🌓</button>
+            </nav>
+
+            <!-- Dashboard Tab -->
+            <div id="dashboard" class="tab-content active">
+                <div class="dashboard-grid">
+                    <div class="summary-cards">
+                        <div class="card">
+                            <h3>Total Portfolio Value</h3>
+                            <div class="value" id="total-value">$0.00</div>
+                            <div class="change" id="total-change">+$0.00 (0%)</div>
+                            <small class="currency-note">All values converted to USD</small>
+                        </div>
+                        <div class="card">
+                            <h3>Total Assets</h3>
+                            <div class="value" id="asset-count">0</div>
+                        </div>
+                        <div class="card">
+                            <h3>Today's Change</h3>
+                            <div class="value" id="day-change">$0.00</div>
+                        </div>
+                    </div>
+                    
+                    <div class="charts-row">
+                        <div class="chart-container">
+                            <h3>Asset Distribution</h3>
+                            <canvas id="asset-pie-chart"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <h3>Account Distribution</h3>
+                            <canvas id="account-pie-chart"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <h3>Stock Holdings</h3>
+                            <canvas id="stock-pie-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <button id="update-prices-btn" class="btn btn-primary">Update Prices</button>
+            </div>
+
+            <!-- Assets Tab -->
+            <div id="assets" class="tab-content">
+                <div class="section-header">
+                    <h2>Your Assets</h2>
+                    <button id="add-asset-btn" class="btn btn-primary">Add Asset</button>
+                </div>
+                
+                <!-- Add/Edit Asset Form -->
+                <div id="add-asset-form" class="form-container hidden">
+                    <h3 id="asset-form-title">Add New Asset</h3>
+                    <form id="asset-form">
+                        <input type="hidden" id="asset-id" value="">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Asset Type</label>
+                                <select id="asset-type" required>
+                                    <option value="">Select Type</option>
+                                    <option value="stock">Stock</option>
+                                    <option value="stock_option">Stock Option</option>
+                                    <option value="rsu">RSU (Restricted Stock Unit)</option>
+                                    <option value="espp">ESPP (Employee Stock Purchase Plan)</option>
+                                    <option value="crypto">Cryptocurrency</option>
+                                    <option value="cash">Cash</option>
+                                    <option value="real_estate">Real Estate</option>
+                                    <option value="commodity">Commodity</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Symbol/Ticker</label>
+                                <input type="text" id="asset-symbol" placeholder="e.g., AAPL, BTC" required>
+                                <button type="button" id="search-symbol-btn" class="btn btn-small">Search</button>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Name</label>
+                                <input type="text" id="asset-name" placeholder="Asset name" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Account</label>
+                                <select id="asset-account">
+                                    <option value="">No Account</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Quantity</label>
+                                <input type="number" id="asset-quantity" step="0.01" placeholder="0.00" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Purchase Price</label>
+                                <input type="number" id="asset-price" step="0.01" placeholder="0.00" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Currency</label>
+                                <select id="asset-currency">
+                                    <option value="USD">USD - US Dollar</option>
+                                    <option value="EUR">EUR - Euro</option>
+                                    <option value="GBP">GBP - British Pound</option>
+                                    <option value="JPY">JPY - Japanese Yen</option>
+                                    <option value="CAD">CAD - Canadian Dollar</option>
+                                    <option value="AUD">AUD - Australian Dollar</option>
+                                    <option value="TWD">TWD - New Taiwan Dollar</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Equity Compensation Specific Fields -->
+                        <div id="equity-fields" class="equity-fields hidden">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Grant Date</label>
+                                    <input type="date" id="asset-grant-date">
+                                </div>
+                                <div class="form-group">
+                                    <label>Vesting Date</label>
+                                    <input type="date" id="asset-vesting-date">
+                                </div>
+                                <div class="form-group">
+                                    <label>Expiration Date</label>
+                                    <input type="date" id="asset-expiration-date">
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Strike Price (Options only)</label>
+                                    <input type="number" id="asset-strike-price" step="0.01" placeholder="0.00">
+                                </div>
+                                <div class="form-group">
+                                    <label>Fair Market Value at Vest</label>
+                                    <input type="number" id="asset-vest-fmv" step="0.01" placeholder="0.00">
+                                </div>
+                                <div class="form-group">
+                                    <label>Status</label>
+                                    <select id="asset-status">
+                                        <option value="granted">Granted (Unvested)</option>
+                                        <option value="vested">Vested</option>
+                                        <option value="exercised">Exercised/Sold</option>
+                                        <option value="expired">Expired</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <!-- Tax Tracking Fields -->
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Tax Country/Region</label>
+                                    <select id="asset-tax-country">
+                                        <option value="TW">🇹🇼 Taiwan</option>
+                                        <option value="US">🇺🇸 United States</option>
+                                        <option value="HK">🇭🇰 Hong Kong</option>
+                                        <option value="SG">🇸🇬 Singapore</option>
+                                        <option value="OTHER">Other</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Tax Rate (%) <small class="tax-rate-help">自定義稅率</small></label>
+                                    <div class="tax-rate-container">
+                                        <select id="asset-tax-rate-preset" class="tax-rate-preset">
+                                            <option value="">-- 選擇常見稅率 --</option>
+                                            <option value="40">40% - 台灣一般稅率</option>
+                                            <option value="45">45% - 台灣高所得稅率</option>
+                                            <option value="30">30% - 台灣中等稅率</option>
+                                            <option value="20">20% - 台灣較低稅率</option>
+                                            <option value="37">37% - 美國最高稅率</option>
+                                            <option value="22">22% - 美國中等稅率</option>
+                                            <option value="17">17% - 香港標準稅率</option>
+                                            <option value="22">22% - 新加坡高所得稅率</option>
+                                            <option value="custom">自定義稅率</option>
+                                        </select>
+                                        <input type="number" id="asset-tax-rate" step="0.01" min="0" max="100" placeholder="輸入稅率%" class="tax-rate-input">
+                                    </div>
+                                    <small class="form-help">請根據您的實際所得稅級距輸入稅率</small>
+                                </div>
+                            </div>
+                            
+                            <div id="exercise-fields" class="form-row hidden">
+                                <div class="form-group">
+                                    <label>Exercise Price (if exercised)</label>
+                                    <input type="number" id="asset-exercise-price" step="0.01" placeholder="0.00">
+                                </div>
+                                <div class="form-group">
+                                    <label>Exercise Date</label>
+                                    <input type="date" id="asset-exercise-date">
+                                </div>
+                            </div>
+                            
+                            <div id="vest-price-field" class="form-group hidden">
+                                <label>Market Price at Vesting (RSU)</label>
+                                <input type="number" id="asset-vest-market-price" step="0.01" placeholder="0.00">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Notes (Optional)</label>
+                            <textarea id="asset-notes" placeholder="Any additional notes..."></textarea>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="submit" id="asset-submit-btn" class="btn btn-primary">Add Asset</button>
+                            <button type="button" id="cancel-asset-btn" class="btn btn-secondary">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Assets Table -->
+                <div class="table-container">
+                    <table id="assets-table">
+                        <thead>
+                            <tr>
+                                <th>Symbol</th>
+                                <th>Name</th>
+                                <th>Type</th>
+                                <th>Account</th>
+                                <th>Quantity</th>
+                                <th>Purchase Price</th>
+                                <th>Current Price</th>
+                                <th>Total Value</th>
+                                <th>Gain/Loss</th>
+                                <th>%</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="assets-tbody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Transactions Tab -->
+            <div id="transactions" class="tab-content">
+                <div class="section-header">
+                    <h2>Transaction History</h2>
+                    <button id="add-transaction-btn" class="btn btn-primary">Add Transaction</button>
+                </div>
+                
+                <!-- Add Transaction Form -->
+                <div id="add-transaction-form" class="form-container hidden">
+                    <h3>Add New Transaction</h3>
+                    <form id="transaction-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Transaction Type</label>
+                                <select id="transaction-type" required>
+                                    <option value="">Select Type</option>
+                                    <option value="BUY">Buy</option>
+                                    <option value="SELL">Sell</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Asset Type</label>
+                                <select id="transaction-asset-type" required>
+                                    <option value="">Select Type</option>
+                                    <option value="stock">Stock</option>
+                                    <option value="stock_option">Stock Option</option>
+                                    <option value="rsu">RSU</option>
+                                    <option value="espp">ESPP</option>
+                                    <option value="crypto">Cryptocurrency</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Symbol/Ticker</label>
+                                <input type="text" id="transaction-symbol" placeholder="e.g., AAPL, BTC" required>
+                                <button type="button" id="search-transaction-symbol-btn" class="btn btn-small">Search</button>
+                            </div>
+                            <div class="form-group">
+                                <label>Name</label>
+                                <input type="text" id="transaction-name" placeholder="Asset name" required>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Quantity</label>
+                                <input type="number" id="transaction-quantity" step="0.01" placeholder="0.00" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Price per Unit</label>
+                                <input type="number" id="transaction-price" step="0.01" placeholder="0.00" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Total Amount</label>
+                                <input type="number" id="transaction-total" step="0.01" placeholder="0.00" readonly>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Transaction Date</label>
+                                <input type="date" id="transaction-date" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Account</label>
+                                <select id="transaction-account">
+                                    <option value="">No Account</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Currency</label>
+                                <select id="transaction-currency">
+                                    <option value="USD">USD - US Dollar</option>
+                                    <option value="EUR">EUR - Euro</option>
+                                    <option value="GBP">GBP - British Pound</option>
+                                    <option value="JPY">JPY - Japanese Yen</option>
+                                    <option value="CAD">CAD - Canadian Dollar</option>
+                                    <option value="AUD">AUD - Australian Dollar</option>
+                                    <option value="TWD">TWD - New Taiwan Dollar</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Notes (Optional)</label>
+                            <textarea id="transaction-notes" placeholder="Any additional notes..."></textarea>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Add Transaction</button>
+                            <button type="button" id="cancel-transaction-btn" class="btn btn-secondary">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Transaction Summary Cards -->
+                <div class="transaction-summary-cards">
+                    <div class="card">
+                        <h3>Total Realized Gains</h3>
+                        <div class="value" id="total-realized-gains">$0.00</div>
+                        <div class="change" id="total-realized-percent">0%</div>
+                    </div>
+                    <div class="card">
+                        <h3>Current Holdings Value</h3>
+                        <div class="value" id="current-holdings-value">$0.00</div>
+                        <div class="change" id="unrealized-gains">$0.00</div>
+                    </div>
+                    <div class="card">
+                        <h3>Total Transactions</h3>
+                        <div class="value" id="total-transactions">0</div>
+                    </div>
+                </div>
+                
+                <!-- Transactions Table -->
+                <div class="table-container">
+                    <table id="transactions-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Type</th>
+                                <th>Symbol</th>
+                                <th>Name</th>
+                                <th>Quantity</th>
+                                <th>Price</th>
+                                <th>Total Amount</th>
+                                <th>Account</th>
+                                <th>Notes</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactions-tbody">
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Holdings from Transactions -->
+                <div class="section-header" style="margin-top: 30px;">
+                    <h3>Current Holdings (from Transactions)</h3>
+                    <button id="view-realized-gains-btn" class="btn btn-secondary">View Realized Gains</button>
+                </div>
+                
+                <div class="table-container">
+                    <table id="holdings-table">
+                        <thead>
+                            <tr>
+                                <th>Symbol</th>
+                                <th>Name</th>
+                                <th>Quantity</th>
+                                <th>Avg Cost</th>
+                                <th>Current Price</th>
+                                <th>Current Value</th>
+                                <th>Unrealized P&L</th>
+                                <th>%</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="holdings-tbody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Accounts Tab -->
+            <div id="accounts" class="tab-content">
+                <div class="section-header">
+                    <h2>Your Accounts</h2>
+                    <button id="add-account-btn" class="btn btn-primary">Add Account</button>
+                </div>
+                
+                <!-- Add Account Form -->
+                <div id="add-account-form" class="form-container hidden">
+                    <h3>Add New Account</h3>
+                    <form id="account-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Account Name</label>
+                                <input type="text" id="account-name" placeholder="e.g., Fidelity 401k" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Account Type</label>
+                                <select id="account-type" required>
+                                    <option value="">Select Type</option>
+                                    <option value="investment">Investment Account</option>
+                                    <option value="bank">Bank Account</option>
+                                    <option value="crypto">Crypto Exchange</option>
+                                    <option value="retirement">Retirement Account</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Currency</label>
+                                <select id="account-currency">
+                                    <option value="USD">USD - US Dollar</option>
+                                    <option value="EUR">EUR - Euro</option>
+                                    <option value="GBP">GBP - British Pound</option>
+                                    <option value="JPY">JPY - Japanese Yen</option>
+                                    <option value="CAD">CAD - Canadian Dollar</option>
+                                    <option value="AUD">AUD - Australian Dollar</option>
+                                    <option value="TWD">TWD - New Taiwan Dollar</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Add Account</button>
+                            <button type="button" id="cancel-account-btn" class="btn btn-secondary">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Accounts List -->
+                <div id="accounts-list" class="cards-grid"></div>
+            </div>
+
+            <!-- Import Tab -->
+            <div id="import" class="tab-content">
+                <div class="section-header">
+                    <h2>Import Brokerage Statements</h2>
+                    <p>Upload CSV files from your brokerage to automatically import transactions</p>
+                </div>
+
+                <div class="import-section">
+                    <div class="supported-brokers">
+                        <h3>Supported Brokers</h3>
+                        <div class="broker-list">
+                            <div class="broker-item">
+                                <span class="broker-name">🏛️ Firstrade</span>
+                                <span class="broker-desc">Transaction History CSV</span>
+                            </div>
+                            <div class="broker-item">
+                                <span class="broker-name">🏛️ Charles Schwab</span>
+                                <span class="broker-desc">Transaction History CSV</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="import-form">
+                        <h3>Upload CSV File</h3>
+                        <div class="upload-area" id="csv-upload-area">
+                            <div class="upload-content">
+                                <div class="upload-icon">📊</div>
+                                <p class="upload-text">
+                                    <strong>Choose a CSV file or drag it here</strong><br>
+                                    Supported formats: Firstrade, Charles Schwab
+                                </p>
+                                <input type="file" id="csv-file-input" accept=".csv" class="file-input hidden">
+                                <button id="select-csv-btn" class="btn btn-primary">Select CSV File</button>
+                            </div>
+                        </div>
+                        
+                        <div id="csv-file-info" class="file-info hidden">
+                            <div class="file-details">
+                                <span id="csv-file-name" class="file-name"></span>
+                                <span id="csv-file-size" class="file-size"></span>
+                                <button id="remove-csv-file" class="btn btn-link">Remove</button>
+                            </div>
+                        </div>
+
+                        <div class="import-options">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="preview-import" checked>
+                                <span class="checkmark"></span>
+                                Preview transactions before importing
+                            </label>
+                        </div>
+
+                        <button id="import-csv-btn" class="btn btn-success" disabled>Import Transactions</button>
+                    </div>
+
+                    <div id="import-status" class="status-message hidden">
+                        <div class="status-content">
+                            <div id="import-progress" class="progress-bar">
+                                <div class="progress-fill"></div>
+                            </div>
+                            <p id="import-message">Processing CSV file...</p>
+                        </div>
+                    </div>
+
+                    <div id="import-preview" class="import-preview hidden">
+                        <div class="section-header">
+                            <h3>Preview Transactions</h3>
+                            <p id="preview-summary">Found <span id="transaction-count">0</span> transactions from <span id="detected-broker">Unknown</span></p>
+                        </div>
+                        
+                        <div class="table-container">
+                            <table id="preview-transactions-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Symbol</th>
+                                        <th>Type</th>
+                                        <th>Quantity</th>
+                                        <th>Price</th>
+                                        <th>Amount</th>
+                                        <th>Description</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="preview-transactions-tbody">
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="preview-actions">
+                            <button id="confirm-import-btn" class="btn btn-success">Confirm Import</button>
+                            <button id="cancel-import-btn" class="btn btn-secondary">Cancel</button>
+                        </div>
+                    </div>
+
+                    <div id="import-results" class="import-results hidden">
+                        <div class="results-header">
+                            <h3>Import Results</h3>
+                        </div>
+                        <div class="results-summary">
+                            <div class="result-item">
+                                <span class="result-label">Transactions Imported:</span>
+                                <span id="imported-transactions" class="result-value">0</span>
+                            </div>
+                            <div class="result-item">
+                                <span class="result-label">Assets Updated:</span>
+                                <span id="updated-assets" class="result-value">0</span>
+                            </div>
+                            <div class="result-item">
+                                <span class="result-label">Broker:</span>
+                                <span id="import-broker" class="result-value">Unknown</span>
+                            </div>
+                        </div>
+                        <div class="results-actions">
+                            <button id="view-imported-assets" class="btn btn-primary">View Assets</button>
+                            <button id="view-imported-transactions" class="btn btn-secondary">View Transactions</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytics Tab -->
+            <div id="analytics" class="tab-content">
+                <h2>Portfolio Analytics</h2>
+                <div class="analytics-grid">
+                    <div class="chart-container large">
+                        <h3>Portfolio Performance Over Time</h3>
+                        <canvas id="performance-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

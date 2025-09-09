@@ -1,0 +1,9 @@
+@echo off
+echo Starting Simple Asset Tracker...
+echo.
+echo Installing minimal dependencies...
+pip install flask flask-cors requests
+echo.
+echo Starting the application...
+python simple_app.py
+pause
