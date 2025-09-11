@@ -225,6 +225,34 @@ def accounts():
         'created_at': acc.created_at.isoformat()
     } for acc in accounts])
 
+@app.route('/api/accounts/<int:account_id>', methods=['PUT', 'DELETE'])
+def manage_account(account_id):
+    if 'user_id' not in session:
+        return jsonify({'error': 'Not logged in'}), 401
+
+    user_id = session['user_id']
+    account = Account.query.filter_by(id=account_id, user_id=user_id).first()
+
+    if not account:
+        return jsonify({'error': 'Account not found or not authorized'}), 404
+
+    if request.method == 'PUT':
+        data = request.get_json()
+        account.name = data.get('name', account.name)
+        account.account_type = data.get('account_type', account.account_type)
+        account.currency = data.get('currency', account.currency)
+        db.session.commit()
+        return jsonify({'message': 'Account updated successfully'})
+
+    if request.method == 'DELETE':
+        # Optional: Check if account has assets and handle accordingly
+        if account.assets:
+            return jsonify({'error': 'Cannot delete account with assets. Please move or delete assets first.'}), 400
+
+        db.session.delete(account)
+        db.session.commit()
+        return jsonify({'message': 'Account deleted successfully'})
+
 @app.route('/api/assets', methods=['GET', 'POST'])
 def assets():
     if 'user_id' not in session:
@@ -529,18 +557,74 @@ def portfolio_summary():
 def update_prices():
     if 'user_id' not in session:
         return jsonify({'error': 'Not logged in'}), 401
-    
+
     user_id = session['user_id']
     assets = Asset.query.filter_by(user_id=user_id).all()
     
-    updated_count = 0
+    stock_symbols = set()
+    crypto_symbols = set()
+
     for asset in assets:
-        if asset.asset_type in ['stock', 'crypto']:
-            new_price = get_current_price(asset.symbol, asset.asset_type)
-            if new_price > 0:
-                asset.current_price = new_price
-                asset.last_updated = datetime.utcnow()
-                updated_count += 1
+        if asset.asset_type == 'stock':
+            # yfinance expects tickers like '2330.TW' for Taiwan stocks
+            search_symbol = asset.symbol
+            if asset.symbol.isdigit() and len(asset.symbol) == 4:
+                search_symbol = f"{asset.symbol}.TW"
+            stock_symbols.add(search_symbol)
+        elif asset.asset_type == 'crypto':
+            crypto_symbols.add(asset.symbol.upper())
+
+    price_map = {}
+
+    # Batch fetch stock prices
+    if stock_symbols and YFINANCE_AVAILABLE:
+        try:
+            tickers_str = " ".join(stock_symbols)
+            data = yf.download(tickers=tickers_str, period='5d', progress=False, auto_adjust=True)
+            if not data.empty and 'Close' in data:
+                last_prices = data['Close'].ffill().iloc[-1]
+                for symbol_yf in stock_symbols:
+                    if symbol_yf in last_prices and pd.notna(last_prices[symbol_yf]) and last_prices[symbol_yf] > 0:
+                        original_symbol = symbol_yf.replace('.TW', '')
+                        price_map[original_symbol] = float(last_prices[symbol_yf])
+        except Exception as e:
+            print(f"Error batch fetching stock prices: {e}")
+
+    # Batch fetch crypto prices
+    if crypto_symbols:
+        symbol_to_id_map = {
+            'BTC': 'bitcoin', 'ETH': 'ethereum', 'LTC': 'litecoin', 'XRP': 'ripple', 'ADA': 'cardano',
+            'DOT': 'polkadot', 'LINK': 'chainlink', 'BCH': 'bitcoin-cash', 'XLM': 'stellar', 'DOGE': 'dogecoin',
+            'USDT': 'tether', 'USDC': 'usd-coin', 'BNB': 'binancecoin', 'SOL': 'solana', 'AVAX': 'avalanche-2', 'MATIC': 'matic-network'
+        }
+
+        coin_ids_to_fetch = {symbol_to_id_map.get(s, s.lower()) for s in crypto_symbols}
+        coin_ids_str = ",".join(coin_ids_to_fetch)
+
+        try:
+            url = f'https://api.coingecko.com/api/v3/simple/price?ids={coin_ids_str}&vs_currencies=usd'
+            response = requests.get(url, timeout=10)
+            if response.status_code == 200:
+                crypto_prices = response.json()
+                id_to_symbol_map = {v: k for k, v in symbol_to_id_map.items()}
+                for coin_id, price_data in crypto_prices.items():
+                    if 'usd' in price_data:
+                        symbol = id_to_symbol_map.get(coin_id, coin_id.upper())
+                        price_map[symbol] = float(price_data['usd'])
+        except Exception as e:
+            print(f"Error batch fetching crypto prices: {e}")
+
+    # Update assets in DB
+    updated_count = 0
+    if price_map:
+        for asset in assets:
+            lookup_symbol = asset.symbol.upper() if asset.asset_type == 'crypto' else asset.symbol
+            if lookup_symbol in price_map:
+                new_price = price_map[lookup_symbol]
+                if asset.current_price != new_price:
+                    asset.current_price = new_price
+                    asset.last_updated = datetime.utcnow()
+                    updated_count += 1
     
     db.session.commit()
     return jsonify({'message': f'Updated prices for {updated_count} assets'})
@@ -621,7 +705,7 @@ def get_current_price(symbol, asset_type):
     except Exception as e:
         print(f"Error fetching price for {symbol}: {e}")
     
-    return 0
+    return None
 
 @app.route('/api/search-symbol/<symbol>')
 def search_symbol(symbol):
@@ -1307,87 +1391,61 @@ def parse_firstrade_csv(csv_content):
     
     for row in reader:
         try:
-            # Firstrade CSV format (actual columns):
-            # Symbol,Quantity,Price,Action,Description,TradeDate,SettledDate,Interest,Amount,Commission,Fee,CUSIP,RecordType
-            
-            # Only process Trade records, skip Financial records
             record_type = row.get('RecordType', '').strip()
             if record_type != 'Trade':
                 continue
                 
             date_str = row.get('TradeDate', '').strip()
             symbol = row.get('Symbol', '').strip().upper()
+            if not symbol or not date_str:
+                continue
+
             action = row.get('Action', '').strip().upper()
             description = row.get('Description', '').strip()
             quantity_str = row.get('Quantity', '0').strip()
             price_str = row.get('Price', '0').strip()
             amount_str = row.get('Amount', '0').strip()
             
-            # Skip rows without symbol or date (like interest, transfers, etc.)
-            if not symbol or not date_str:
-                continue
-                
-            # Parse date (Firstrade uses YYYY-MM-DD format)
             if DATEUTIL_AVAILABLE:
                 transaction_date = dateparse(date_str)
             else:
-                # Fallback date parsing
                 for fmt in ['%Y-%m-%d', '%m/%d/%Y', '%m-%d-%Y']:
                     try:
                         transaction_date = datetime.strptime(date_str, fmt)
                         break
                     except ValueError:
-                        continue
+                        pass
                 else:
+                    print(f"Skipping row due to unparsable date: {row}")
                     continue
             
-            # Clean and parse numeric values
-            quantity = float(quantity_str.replace(',', '')) if quantity_str else 0
-            price = float(price_str.replace('$', '').replace(',', '')) if price_str else 0
-            amount = float(amount_str.replace('$', '').replace(',', '').replace('(', '-').replace(')', '')) if amount_str else 0
-            
-            # Skip if quantity or price is 0
+            try:
+                quantity = float(quantity_str.replace(',', ''))
+                price = float(price_str.replace('$', '').replace(',', ''))
+                amount = float(amount_str.replace('$', '').replace(',', '').replace('(', '-').replace(')', ''))
+            except (ValueError, TypeError):
+                print(f"Skipping row due to invalid number format: {row}")
+                continue
+
             if quantity == 0 or price == 0:
                 continue
             
-            # Determine transaction type from Action column first, then from description
             transaction_type = 'BUY'
-            if action == 'SELL' or 'sell' in action.lower():
+            if 'SELL' in action or 'sell' in description.lower() or 'sold' in description.lower():
                 transaction_type = 'SELL'
-                quantity = abs(quantity)  # Ensure positive quantity
-            elif action == 'BUY' or 'buy' in action.lower():
-                transaction_type = 'BUY'  
-                quantity = abs(quantity)
-            elif 'sell' in description.lower() or 'sold' in description.lower():
-                transaction_type = 'SELL'
-                quantity = abs(quantity)
-            elif 'buy' in description.lower() or 'bought' in description.lower():
-                transaction_type = 'BUY'
-                quantity = abs(quantity)
             
-            # Extract company name from description if available
-            name = symbol  # Default to symbol
+            quantity = abs(quantity)
+
+            name = symbol
             if description:
-                # Try to extract company name from description
-                parts = description.split()
-                if len(parts) > 0:
-                    # Take first few words as company name, but clean it up
-                    name_parts = []
-                    for part in parts[:3]:  # Take first 3 words max
-                        if part.upper() not in ['UNSOLICITED', 'COMMON', 'STOCK', 'INC', 'CORP', 'LTD']:
-                            name_parts.append(part)
-                    if name_parts:
-                        name = ' '.join(name_parts)
+                name_parts = [part for part in description.split()[:4] if part.upper() not in ['UNSOLICITED', 'COMMON', 'STOCK', 'INC', 'CORP', 'LTD']]
+                if name_parts:
+                    name = ' '.join(name_parts)
             
             transactions.append({
-                'date': transaction_date,
-                'symbol': symbol,
-                'name': name,
-                'description': description,
-                'quantity': quantity,
-                'price': price,
-                'amount': abs(amount),
-                'transaction_type': transaction_type,
+                'date': transaction_date, 'symbol': symbol, 'name': name,
+                'description': description, 'quantity': quantity, 'price': price,
+                'amount': abs(amount), 'transaction_type': transaction_type,
                 'broker': 'Firstrade'
             })
             
@@ -1404,31 +1462,22 @@ def parse_schwab_csv(csv_content):
     
     for row in reader:
         try:
-            # Schwab CSV format (actual columns):
-            # Date, Action, Symbol, Description, Quantity, Price, Fees & Comm, Amount
             date_str = row.get('Date', '').strip()
             action = row.get('Action', '').strip()
             symbol = row.get('Symbol', '').strip().upper()
+            if not symbol or not date_str or not action:
+                continue
+
             description = row.get('Description', '').strip()
             quantity_str = row.get('Quantity', '0').strip()
             price_str = row.get('Price', '0').strip()
             amount_str = row.get('Amount', '0').strip()
             
-            # Skip rows without symbol, date, or action
-            if not symbol or not date_str or not action:
-                continue
-            
-            # Parse date (handle complex formats like "06/13/2024 as of 06/10/2024")
             if DATEUTIL_AVAILABLE:
-                try:
-                    # If date has " as of " format, take the first date
-                    if " as of " in date_str:
-                        date_str = date_str.split(" as of ")[0].strip()
-                    transaction_date = dateparse(date_str)
-                except:
-                    continue
+                if " as of " in date_str:
+                    date_str = date_str.split(" as of ")[0].strip()
+                transaction_date = dateparse(date_str)
             else:
-                # Fallback date parsing
                 if " as of " in date_str:
                     date_str = date_str.split(" as of ")[0].strip()
                 for fmt in ['%m/%d/%Y', '%Y-%m-%d', '%m-%d-%Y']:
@@ -1436,52 +1485,39 @@ def parse_schwab_csv(csv_content):
                         transaction_date = datetime.strptime(date_str, fmt)
                         break
                     except ValueError:
-                        continue
+                        pass
                 else:
+                    print(f"Skipping row due to unparsable date: {row}")
                     continue
             
-            # Clean and parse numeric values
-            quantity = float(quantity_str.replace(',', '')) if quantity_str else 0
-            price = float(price_str.replace('$', '').replace(',', '')) if price_str else 0
-            amount = float(amount_str.replace('$', '').replace(',', '').replace('(', '-').replace(')', '')) if amount_str else 0
-            
-            # Map Schwab actions to transaction types
-            action_upper = action.upper()
-            transaction_type = None
-            name = description  # Default to full description
-            
-            if action_upper in ['SELL', 'SELL SHORT', 'SELL TO CLOSE']:
-                transaction_type = 'SELL'
-                quantity = abs(quantity)
-            elif action_upper in ['BUY', 'BUY TO OPEN', 'BUY TO COVER']:
-                transaction_type = 'BUY'
-                quantity = abs(quantity)
-            elif action_upper in ['REINVEST SHARES', 'REINVEST DIVIDEND']:
-                # Treat reinvest as BUY
-                transaction_type = 'BUY'
-                quantity = abs(quantity)
-                # For reinvest, the amount is typically negative, so we use abs of amount divided by price
-                if price > 0 and amount != 0:
-                    calculated_quantity = abs(amount) / price
-                    if quantity == 0:
-                        quantity = calculated_quantity
-            else:
-                # Skip other actions like dividends, fees, interest, tax adjustments, etc.
+            try:
+                quantity = float(quantity_str.replace(',', ''))
+                price = float(price_str.replace('$', '').replace(',', ''))
+                amount = float(amount_str.replace('$', '').replace(',', '').replace('(', '-').replace(')', ''))
+            except (ValueError, TypeError):
+                print(f"Skipping row due to invalid number format: {row}")
                 continue
             
-            # Skip if still no valid quantity or price
+            action_upper = action.upper()
+            transaction_type = None
+            if action_upper in ['SELL', 'SELL SHORT', 'SELL TO CLOSE']:
+                transaction_type = 'SELL'
+            elif action_upper in ['BUY', 'BUY TO OPEN', 'BUY TO COVER', 'REINVEST SHARES', 'REINVEST DIVIDEND']:
+                transaction_type = 'BUY'
+            else:
+                continue
+            
+            quantity = abs(quantity)
+            if action_upper.startswith('REINVEST') and price > 0 and amount != 0 and quantity == 0:
+                quantity = abs(amount) / price
+
             if quantity == 0 or price == 0:
                 continue
             
             transactions.append({
-                'date': transaction_date,
-                'symbol': symbol,
-                'name': name,
-                'description': description,
-                'quantity': quantity,
-                'price': price,
-                'amount': abs(amount),
-                'transaction_type': transaction_type,
+                'date': transaction_date, 'symbol': symbol, 'name': description,
+                'description': description, 'quantity': quantity, 'price': price,
+                'amount': abs(amount), 'transaction_type': transaction_type,
                 'broker': 'Charles Schwab'
             })
             
@@ -1526,8 +1562,8 @@ def preview_csv():
         return jsonify({'error': 'File must be a CSV'}), 400
     
     try:
-        # Read CSV content
-        csv_content = file.read().decode('utf-8')
+        # Read CSV content, using utf-8-sig to handle BOM
+        csv_content = file.read().decode('utf-8-sig')
         
         # Detect format and parse
         csv_format = detect_csv_format(csv_content)
@@ -1586,8 +1622,8 @@ def import_csv():
         return jsonify({'error': 'File must be a CSV'}), 400
     
     try:
-        # Read CSV content
-        csv_content = file.read().decode('utf-8')
+        # Read CSV content, using utf-8-sig to handle BOM
+        csv_content = file.read().decode('utf-8-sig')
         
         # Detect format and parse
         csv_format = detect_csv_format(csv_content)

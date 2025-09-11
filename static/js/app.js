@@ -89,7 +89,7 @@ function setupEventListeners() {
     });
     $('#cancel-account-btn').click(() => {
         $('#add-account-form').addClass('hidden');
-        $('#account-form')[0].reset();
+        resetAccountForm();
     });
     $('#account-form').submit(handleAddAccount);
 
@@ -836,13 +836,24 @@ function loadAccounts() {
 function displayAccounts() {
     const container = $('#accounts-list');
     container.empty();
+
+    if (accounts.length === 0) {
+        container.html('<p>No accounts found. Add one to get started!</p>');
+        return;
+    }
     
     accounts.forEach(account => {
         const card = $(`
-            <div class="account-card">
-                <h4>${account.name}</h4>
-                <div class="type">${account.account_type}</div>
-                <div class="currency">Currency: ${account.currency}</div>
+            <div class="account-card" data-account-id="${account.id}">
+                <div class="card-content">
+                    <h4>${account.name}</h4>
+                    <div class="type">${account.account_type}</div>
+                    <div class="currency">Currency: ${account.currency}</div>
+                </div>
+                <div class="card-actions">
+                    <button class="btn btn-small btn-primary" onclick="showEditAccountForm(${account.id})">Edit</button>
+                    <button class="btn btn-small btn-secondary" onclick="deleteAccount(${account.id})">Delete</button>
+                </div>
             </div>
         `);
         
@@ -874,22 +885,75 @@ function handleAddAccount(e) {
         currency: $('#account-currency').val()
     };
     
+    const accountId = $('#account-id').val();
+    const isEditing = accountId && accountId !== '';
+    const url = isEditing ? `/api/accounts/${accountId}` : '/api/accounts';
+    const method = isEditing ? 'PUT' : 'POST';
+
     $.ajax({
-        url: '/api/accounts',
-        method: 'POST',
+        url: url,
+        method: method,
         contentType: 'application/json',
         data: JSON.stringify(accountData),
         success: function() {
-            showAlert('Account added successfully!', 'success');
+            const message = isEditing ? 'Account updated successfully!' : 'Account added successfully!';
+            showAlert(message, 'success');
             $('#add-account-form').addClass('hidden');
             $('#account-form')[0].reset();
+            resetAccountForm();
             loadAccounts();
         },
         error: function(xhr) {
-            const error = xhr.responseJSON?.error || 'Failed to add account';
+            const action = isEditing ? 'update' : 'add';
+            const error = xhr.responseJSON?.error || `Failed to ${action} account`;
             showAlert(error, 'error');
         }
     });
+}
+
+function showEditAccountForm(accountId) {
+    const account = accounts.find(acc => acc.id === accountId);
+    if (!account) {
+        showAlert('Account not found', 'error');
+        return;
+    }
+
+    // Populate the form
+    $('#account-id').val(account.id);
+    $('#account-name').val(account.name);
+    $('#account-type').val(account.account_type);
+    $('#account-currency').val(account.currency);
+
+    // Change form title and button text
+    $('#account-form-title').text('Edit Account');
+    $('#add-account-form button[type="submit"]').text('Update Account');
+
+    // Show the form
+    $('#add-account-form').removeClass('hidden');
+}
+
+function deleteAccount(accountId) {
+    if (confirm('Are you sure you want to delete this account? This cannot be undone.')) {
+        $.ajax({
+            url: `/api/accounts/${accountId}`,
+            method: 'DELETE',
+            success: function(response) {
+                showAlert(response.message, 'success');
+                loadAccounts();
+            },
+            error: function(xhr) {
+                const error = xhr.responseJSON?.error || 'Failed to delete account';
+                showAlert(error, 'error');
+            }
+        });
+    }
+}
+
+function resetAccountForm() {
+    $('#account-form')[0].reset();
+    $('#account-id').val('');
+    $('#account-form-title').text('Add New Account');
+    $('#add-account-form button[type="submit"]').text('Add Account');
 }
 
 // Analytics functions

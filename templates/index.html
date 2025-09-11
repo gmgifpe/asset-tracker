@@ -466,10 +466,11 @@
                     <button id="add-account-btn" class="btn btn-primary">Add Account</button>
                 </div>
                 
-                <!-- Add Account Form -->
+                <!-- Add/Edit Account Form -->
                 <div id="add-account-form" class="form-container hidden">
-                    <h3>Add New Account</h3>
+                    <h3 id="account-form-title">Add New Account</h3>
                     <form id="account-form">
+                        <input type="hidden" id="account-id" value="">
                         <div class="form-row">
                             <div class="form-group">
                                 <label>Account Name</label>
