@@ -1280,3 +1280,312 @@ body.dark-mode .progress-bar {
 body.dark-mode .currency-note {
     color: #adb5bd;
 }
+
+/* Account Cards Styling */
+.account-card {
+    background: var(--card-background, #ffffff);
+    border: 1px solid var(--border-color, #e0e0e0);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: box-shadow 0.2s ease;
+}
+
+.account-card:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.account-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.account-header h4 {
+    margin: 0;
+    color: var(--text-color, #333);
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.account-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.account-details {
+    display: grid;
+    gap: 0.5rem;
+}
+
+.account-type {
+    font-weight: 500;
+    color: var(--primary-color, #007bff);
+    text-transform: capitalize;
+}
+
+.account-currency,
+.account-assets,
+.account-created {
+    color: var(--text-secondary, #666);
+    font-size: 0.9rem;
+}
+
+.account-assets {
+    font-weight: 500;
+}
+
+.delete-account-btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: #dc3545;
+    color: white;
+}
+
+.delete-account-btn:hover {
+    transform: scale(1.1);
+    background: #c82333;
+}
+
+/* Delete Account Modal Styling */
+.delete-account-modal .modal-content {
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.account-deletion-warning {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 6px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+body.dark-mode .account-deletion-warning {
+    background: #2d1b00;
+    border-color: #3e2723;
+}
+
+.warning-icon {
+    font-size: 1.5rem;
+}
+
+.account-info {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: var(--background-secondary, #f8f9fa);
+    border-radius: 6px;
+}
+
+.account-info h4 {
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+    color: var(--text-color, #333);
+}
+
+.account-info ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.account-info li {
+    padding: 0.25rem 0;
+    color: var(--text-secondary, #666);
+}
+
+.assets-in-account {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: var(--background-secondary, #f8f9fa);
+    border-radius: 6px;
+}
+
+.assets-in-account h4 {
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+    color: var(--text-color, #333);
+}
+
+.asset-list {
+    list-style: disc;
+    padding-left: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.asset-list li {
+    padding: 0.25rem 0;
+    color: var(--text-secondary, #666);
+}
+
+.asset-handling-options {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color, #e0e0e0);
+}
+
+.asset-handling-options h4 {
+    margin-bottom: 0.75rem;
+    color: var(--text-color, #333);
+}
+
+.radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.radio-group label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    color: var(--text-color, #333);
+}
+
+.radio-group input[type="radio"] {
+    margin: 0;
+}
+
+.danger-option {
+    color: #dc3545 !important;
+    font-weight: 500;
+}
+
+.no-assets {
+    padding: 1rem;
+    background: var(--background-secondary, #f8f9fa);
+    border-radius: 6px;
+    margin-bottom: 1.5rem;
+}
+
+.no-assets p {
+    margin: 0;
+    color: var(--text-secondary, #666);
+}
+
+.confirmation-input {
+    margin-bottom: 1rem;
+}
+
+.confirmation-input p {
+    margin-bottom: 0.75rem;
+    color: var(--text-color, #333);
+}
+
+.confirmation-input .form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 2px solid var(--border-color, #e0e0e0);
+    border-radius: 6px;
+    font-size: 1rem;
+    transition: border-color 0.2s ease;
+}
+
+.confirmation-input .form-control:focus {
+    outline: none;
+    border-color: var(--primary-color, #007bff);
+}
+
+.error-message {
+    color: #dc3545;
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--text-secondary, #666);
+}
+
+.empty-state p {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+/* Dark mode account cards */
+body.dark-mode .account-card {
+    background: #2d3748;
+    border-color: #4a5568;
+}
+
+body.dark-mode .account-header h4 {
+    color: #e2e8f0;
+}
+
+body.dark-mode .account-type {
+    color: #63b3ed;
+}
+
+body.dark-mode .account-currency,
+body.dark-mode .account-assets,
+body.dark-mode .account-created {
+    color: #a0aec0;
+}
+
+body.dark-mode .account-info,
+body.dark-mode .assets-in-account,
+body.dark-mode .no-assets {
+    background: #1a202c;
+}
+
+body.dark-mode .account-info h4,
+body.dark-mode .assets-in-account h4 {
+    color: #e2e8f0;
+}
+
+body.dark-mode .account-info li,
+body.dark-mode .asset-list li,
+body.dark-mode .no-assets p {
+    color: #a0aec0;
+}
+
+body.dark-mode .radio-group label {
+    color: #e2e8f0;
+}
+
+body.dark-mode .confirmation-input p {
+    color: #e2e8f0;
+}
+
+body.dark-mode .confirmation-input .form-control {
+    background: #2d3748;
+    border-color: #4a5568;
+    color: #e2e8f0;
+}
+
+body.dark-mode .confirmation-input .form-control:focus {
+    border-color: #63b3ed;
+}
+
+body.dark-mode .empty-state {
+    color: #a0aec0;
+}
+
+/* Responsive account cards */
+@media (max-width: 768px) {
+    .account-header {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .account-actions {
+        align-self: flex-start;
+    }
+    
+    .delete-account-modal .modal-content {
+        max-width: 95vw;
+        margin: 1rem;
+    }
+}
