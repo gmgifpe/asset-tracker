@@ -837,16 +837,49 @@ function displayAccounts() {
     const container = $('#accounts-list');
     container.empty();
     
+    if (accounts.length === 0) {
+        container.append(`
+            <div class="empty-state">
+                <p>No accounts yet. Click "Add Account" to create your first account.</p>
+            </div>
+        `);
+        return;
+    }
+    
     accounts.forEach(account => {
+        const assetCountText = account.asset_count > 0 ? 
+            `${account.asset_count} asset${account.asset_count > 1 ? 's' : ''}` : 
+            'No assets';
+            
         const card = $(`
-            <div class="account-card">
-                <h4>${account.name}</h4>
-                <div class="type">${account.account_type}</div>
-                <div class="currency">Currency: ${account.currency}</div>
+            <div class="account-card" data-account-id="${account.id}">
+                <div class="account-header">
+                    <h4>${account.name}</h4>
+                    <div class="account-actions">
+                        <button class="btn btn-sm btn-danger delete-account-btn" 
+                                data-account-id="${account.id}" 
+                                title="Delete Account">
+                            🗑️
+                        </button>
+                    </div>
+                </div>
+                <div class="account-details">
+                    <div class="account-type">${account.account_type}</div>
+                    <div class="account-currency">Currency: ${account.currency}</div>
+                    <div class="account-assets">${assetCountText}</div>
+                    <div class="account-created">Created: ${new Date(account.created_at).toLocaleDateString()}</div>
+                </div>
             </div>
         `);
         
         container.append(card);
+    });
+    
+    // Add click handlers for delete buttons
+    $('.delete-account-btn').click(function(e) {
+        e.stopPropagation();
+        const accountId = $(this).data('account-id');
+        showDeleteAccountConfirmation(accountId);
     });
 }
 
@@ -888,6 +921,171 @@ function handleAddAccount(e) {
         error: function(xhr) {
             const error = xhr.responseJSON?.error || 'Failed to add account';
             showAlert(error, 'error');
+        }
+    });
+}
+
+// Account deletion functions
+function showDeleteAccountConfirmation(accountId) {
+    // First get account details
+    $.ajax({
+        url: `/api/accounts/${accountId}/info`,
+        method: 'GET',
+        success: function(accountInfo) {
+            showDeleteAccountModal(accountInfo);
+        },
+        error: function() {
+            showAlert('Failed to load account information', 'error');
+        }
+    });
+}
+
+function showDeleteAccountModal(accountInfo) {
+    const hasAssets = accountInfo.asset_count > 0;
+    const totalValue = accountInfo.total_value || 0;
+    
+    const assetsList = hasAssets ? accountInfo.assets.map(asset => 
+        `<li>${asset.symbol} - ${asset.quantity} shares (${asset.name})</li>`
+    ).join('') : '';
+    
+    const modalHTML = `
+        <div class="modal delete-account-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Delete Account: "${accountInfo.name}"</h3>
+                    <button class="close-modal">&times;</button>
+                </div>
+                
+                <div class="modal-body">
+                    <div class="account-deletion-warning">
+                        <div class="warning-icon">⚠️</div>
+                        <p><strong>This action cannot be undone!</strong></p>
+                    </div>
+                    
+                    <div class="account-info">
+                        <h4>Account Details:</h4>
+                        <ul>
+                            <li><strong>Name:</strong> ${accountInfo.name}</li>
+                            <li><strong>Type:</strong> ${accountInfo.account_type}</li>
+                            <li><strong>Currency:</strong> ${accountInfo.currency}</li>
+                            <li><strong>Assets:</strong> ${accountInfo.asset_count}</li>
+                            ${totalValue > 0 ? `<li><strong>Total Value:</strong> $${totalValue.toFixed(2)}</li>` : ''}
+                        </ul>
+                    </div>
+                    
+                    ${hasAssets ? `
+                        <div class="assets-in-account">
+                            <h4>Assets in this account:</h4>
+                            <ul class="asset-list">
+                                ${assetsList}
+                            </ul>
+                            
+                            <div class="asset-handling-options">
+                                <h4>What should happen to these assets?</h4>
+                                <div class="radio-group">
+                                    <label>
+                                        <input type="radio" name="asset-action" value="move_to_default" checked>
+                                        <span>Move assets to "No Account" (recommended)</span>
+                                    </label>
+                                    <label>
+                                        <input type="radio" name="asset-action" value="delete">
+                                        <span class="danger-option">Delete all assets permanently</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    ` : `
+                        <div class="no-assets">
+                            <p>This account has no assets and can be safely deleted.</p>
+                        </div>
+                    `}
+                    
+                    <div class="confirmation-input">
+                        <p>To confirm deletion, type the account name: <strong>${accountInfo.name}</strong></p>
+                        <input type="text" id="delete-confirmation-input" placeholder="Type account name here..." class="form-control">
+                        <div id="confirmation-error" class="error-message hidden">Account name doesn't match</div>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button id="confirm-delete-account" class="btn btn-danger" disabled 
+                            data-account-id="${accountInfo.id}" data-account-name="${accountInfo.name}">
+                        Delete Account
+                    </button>
+                    <button class="btn btn-secondary close-modal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove any existing modal
+    $('.delete-account-modal').remove();
+    
+    // Add modal to body
+    $('body').append(modalHTML);
+    
+    // Set up event handlers
+    $('.close-modal').click(closeModal);
+    
+    // Enable/disable delete button based on confirmation input
+    $('#delete-confirmation-input').on('input', function() {
+        const inputValue = $(this).val().trim();
+        const accountName = $('#confirm-delete-account').data('account-name');
+        const confirmButton = $('#confirm-delete-account');
+        const errorDiv = $('#confirmation-error');
+        
+        if (inputValue === accountName) {
+            confirmButton.prop('disabled', false);
+            errorDiv.addClass('hidden');
+        } else {
+            confirmButton.prop('disabled', true);
+            if (inputValue.length > 0) {
+                errorDiv.removeClass('hidden');
+            } else {
+                errorDiv.addClass('hidden');
+            }
+        }
+    });
+    
+    // Handle delete confirmation
+    $('#confirm-delete-account').click(function() {
+        const accountId = $(this).data('account-id');
+        const action = $('input[name="asset-action"]:checked').val() || 'move_to_default';
+        deleteAccount(accountId, action);
+    });
+}
+
+function deleteAccount(accountId, action) {
+    const confirmButton = $('#confirm-delete-account');
+    const originalText = confirmButton.text();
+    
+    // Show loading state
+    confirmButton.prop('disabled', true).text('Deleting...');
+    
+    $.ajax({
+        url: `/api/accounts/${accountId}`,
+        method: 'DELETE',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            handle_assets: action
+        }),
+        success: function(response) {
+            closeModal();
+            showAlert(response.message, 'success');
+            
+            // Reload accounts and assets
+            loadAccounts();
+            if (action === 'delete_assets') {
+                // If assets were deleted, refresh the assets tab too
+                loadAssets();
+            }
+        },
+        error: function(xhr) {
+            const error = xhr.responseJSON?.error || 'Failed to delete account';
+            showAlert(error, 'error');
+            
+            // Restore button state
+            confirmButton.prop('disabled', false).text(originalText);
         }
     });
 }
